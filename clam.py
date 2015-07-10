@@ -10,8 +10,9 @@
 
 __version__ = '0.1-dev'
 
-from flask import Flask, request
+from flask import Flask, flash, redirect, render_template, request, url_for
 from flask.ext.sqlalchemy import SQLAlchemy
+from jinja2 import Markup
 import json
 from os import environ
 import requests
@@ -19,12 +20,16 @@ import requests
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DATABASE_URL', 'sqlite:///db.sqlite')
 app.config['DEBUG'] = environ.get('DEBUG', False)
+app.config['SECRET_KEY'] = 'I can see a dark green jeep from my window radish barracuda'
+
+app.jinja_env.globals['include_raw'] = lambda filename : Markup(app.jinja_loader.get_source(app.jinja_env, filename)[0])
+
 db = SQLAlchemy(app)
 
 class Signatory(db.Model):
     __tablename__ = 'signatories'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(), index=True)
+    username = db.Column(db.String(), unique=True)
     version = db.Column(db.String())
     full_name = db.Column(db.String())
     email = db.Column(db.String())
@@ -49,18 +54,19 @@ def get_pull_request_authors(repo, pr):
 status_context = 'ci/clam'
 
 def set_commit_status(repo, sha, status):
-    state = ''
+    state = 'success' if status else 'failure'
     desciption = ''
+    target_url = ''
     if status:
-        state = 'success'
         description = 'All contributors have signed the CLA!'
+        target_url = url_for('hello')
     else:
-        state = 'failure'
         description = 'Not all contributors have signed the CLA'
+        target_url = url_for('sign', _external=True)
 
     payload = {
         'state': state,
-        #'target_url': link_to_agreement,
+        'target_url': target_url,
         'description': description,
         'context': status_context
     }
@@ -76,7 +82,8 @@ def set_commit_status(repo, sha, status):
     r = requests.post(url.format(repo, sha), data=json.dumps(payload), headers=auth)
 
     # debug
-    app.logger.debug((r.status_code, r.json()))
+    if r.status_code != requests.codes.ok:
+        app.logger.debug((r.status_code, r.json()))
 
 def get_commit_status(repo, sha, status):
     """Returns True if commit status is already 'success', otherwise False"""
@@ -157,6 +164,36 @@ def github():
 # GET /repos/:owner/:repo/pulls?state=open
 # GET /repos/:owner/:repo/pulls/:number/commits
 
+from wtforms import Form, StringField, TextAreaField, BooleanField, validators
+
+class RegistrationForm(Form):
+    username = StringField('Username', [validators.Length(min=4, max=25)])
+    full_name = StringField('Full Name', [validators.Length(min=4, max=25)])
+    email = StringField('Email Address', [validators.Length(min=6, max=35), validators.Email()])
+    address = TextAreaField('Address')
+    telephone = StringField('Phone Number')
+
+    accept = BooleanField('I accept', [validators.Required()])
+
+@app.route('/sign', methods=['POST', 'PUT', 'GET'])
+def sign():
+    # TODO: authenticate user with github oauth (no scope)
+    # .form-control-static
+    form = RegistrationForm(request.form)
+    if request.method == 'POST' and form.validate():
+        sign = Signatory(
+            username = form.username.data,
+            full_name = form.full_name.data,
+            email = form.email.data,
+            address = form.address.data,
+            telephone = form.telephone.data,
+            version = None
+        )
+        db.session.add(sign)
+        db.session.commit()
+        flash('Thanks for signing the CLA')
+        return redirect(url_for('hello'))
+    return render_template('register.html', form=form)
 
 if __name__ == '__main__':
     import os
