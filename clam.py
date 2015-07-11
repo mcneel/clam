@@ -10,7 +10,7 @@
 
 __version__ = '0.1-dev'
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for, make_response
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import Markup
 import json
@@ -36,9 +36,15 @@ class Signatory(db.Model):
     address = db.Column(db.String())
     telephone = db.Column(db.String())
 
-@app.route('/')
-def hello():
-    return 'Hello World!'
+    def to_json(self):
+        return {
+            'github_user': self.username,
+            'cla_version': self.version,
+            'full_name': self.full_name,
+            'email': self.email,
+            'address': self.address,
+            'telephone': self.telephone
+        }
 
 def get_pull_request_authors(repo, pr):
     """Gets a list of committers for a given pull request"""
@@ -159,11 +165,6 @@ def github():
     else:
         return 'nothing to do\n', 200
 
-
-# TODO: when someone signs the CLA, re-check all open pull requests
-# GET /repos/:owner/:repo/pulls?state=open
-# GET /repos/:owner/:repo/pulls/:number/commits
-
 from wtforms import Form, StringField, TextAreaField, BooleanField, validators
 
 class RegistrationForm(Form):
@@ -172,7 +173,7 @@ class RegistrationForm(Form):
     email = StringField('Email Address', [validators.Length(min=6, max=35), validators.Email()])
     address = TextAreaField('Address')
     telephone = StringField('Phone Number')
-
+    cla_version = StringField('CLA Version')
     accept = BooleanField('I accept', [validators.Required()])
 
 def get_cla_and_version():
@@ -194,7 +195,7 @@ def get_cla_and_version():
     # sha
     url = 'https://api.github.com/repos/{}/commits?path={}'.format(repo, path)
     r = requests.get(url)
-    sha = r.json()[0]['sha'][:7]
+    sha = r.json()[0]['sha']
 
     # link to history
     link = 'https://github.com/{}/commits/master/{}'.format(repo, path)
@@ -205,22 +206,34 @@ def get_cla_and_version():
 def sign():
     # TODO: authenticate user with github oauth (no scope)
     # .form-control-static
+    # TODO: add error at top if form didn't validate
     form = RegistrationForm(request.form)
     if request.method == 'POST' and form.validate():
         sign = Signatory(
             username = form.username.data,
             full_name = form.full_name.data,
             email = form.email.data,
-            address = form.address.data,
+            address = form.address.data.replace('\r', ''), # defaults to crlf?!
             telephone = form.telephone.data,
-            version = None
+            version = form.cla_version.data
         )
         db.session.add(sign)
         db.session.commit()
         flash('Thanks for signing the CLA')
-        return redirect(url_for('hello'))
+        # TODO: when someone signs the CLA, re-check all open pull requests
+        # GET /repos/:owner/:repo/pulls?state=open
+        # GET /repos/:owner/:repo/pulls/:number/commits
+        # TODO: redirect to thank you page, then origin url (i.e. pull request)
+        return redirect(url_for('signatories'))
     cla = get_cla_and_version()
     return render_template('register.html', form=form, cla=cla)
+
+@app.route('/', methods=['GET'])
+def signatories():
+    data = [s.to_json() for s in Signatory.query.all()]
+    r = make_response(json.dumps(data, indent=2, sort_keys=True))
+    r.mimetype = 'application/json'
+    return r
 
 if __name__ == '__main__':
     import os

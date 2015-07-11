@@ -14,7 +14,7 @@
       </div>
 
       <div class="row marketing">
-        <strong>Version:</strong> <a href="{{ cla.link }}"><code>{{ cla.sha }}</code></a>
+        <strong>Version:</strong> <a href="{{ cla.link }}"><code>{{ cla.sha|truncate(7, True, '') }}</code></a>
       </div>
 
       <pre>
@@ -32,7 +32,7 @@
           {{ render_field(form.address) }}
           {{ render_field(form.telephone) }}
           {{ render_checkbox_field(form.accept) }}
-
+          <input type="hidden" name="cla_version" value="{{ cla.sha }}">
           <button type=submit class="btn btn-primary btn-block">Sign the CLA</button>
         </form>
       </div>
