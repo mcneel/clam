@@ -175,6 +175,32 @@ class RegistrationForm(Form):
 
     accept = BooleanField('I accept', [validators.Required()])
 
+def get_cla_and_version():
+    # TODO: search for 'CLA.*'
+    # render html if possible
+    # http://flask.pocoo.org/snippets/19/
+    path = 'CLA'
+
+    # TODO: set repo in env var
+    repo = 'mcneel/clam'
+
+    # text
+    #with open(path, 'r') as f:
+    #    text = f.read()
+    url = 'https://raw.github.com/{}/master/{}'.format(repo, path)
+    r = requests.get(url)
+    text = r.text
+
+    # sha
+    url = 'https://api.github.com/repos/{}/commits?path={}'.format(repo, path)
+    r = requests.get(url)
+    sha = r.json()[0]['sha'][:7]
+
+    # link to history
+    link = 'https://github.com/{}/commits/master/{}'.format(repo, path)
+
+    return {'text': text, 'sha': sha, 'link': link}
+
 @app.route('/sign', methods=['POST', 'PUT', 'GET'])
 def sign():
     # TODO: authenticate user with github oauth (no scope)
@@ -193,7 +219,8 @@ def sign():
         db.session.commit()
         flash('Thanks for signing the CLA')
         return redirect(url_for('hello'))
-    return render_template('register.html', form=form)
+    cla = get_cla_and_version()
+    return render_template('register.html', form=form, cla=cla)
 
 if __name__ == '__main__':
     import os
