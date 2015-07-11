@@ -14,26 +14,42 @@
       </div>
 
       <div class="row marketing">
+        <h2 id="read">1. Read</h2>
         <strong>Version:</strong> <a href="{{ cla.link }}"><code>{{ cla.sha|truncate(7, True, '') }}</code></a>
-      </div>
+        <br>
 
       <pre>
         <code>
 {{ cla.text }}
         </code>
       </pre>
+      </div>
 
+      <hr>
+
+      <h2 id="auth">2. Authenticate</h2>
+      <div class="row marketing">
+        <a class="btn btn-primary btn-block {% if form.username %}disabled{% endif %}" href="/auth" role="button">Authenticate with GitHub</a>
+        <!-- TODO: logout -->
+      </div>
+
+      <hr>
+
+      <h2 id="sign">3. Sign</h2>
       <div class="row marketing">
         {% from "_formhelpers.html" import render_field, render_checkbox_field %}
         <form method=post action="/sign">
-          {{ render_field(form.username) }}
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" class="form-control" placeholder="{% if form.username %}{{ form.username }}{% else %}Please authenticate with GitHub{% endif %}" readonly>
+          </div>
           {{ render_field(form.full_name) }}
           {{ render_field(form.email) }}
           {{ render_field(form.address) }}
           {{ render_field(form.telephone) }}
           {{ render_checkbox_field(form.accept) }}
           <input type="hidden" name="cla_version" value="{{ cla.sha }}">
-          <button type=submit class="btn btn-primary btn-block">Sign the CLA</button>
+          <button type=submit class="btn btn-primary btn-block" {% if not form.username %}disabled="disabled"{% endif %}>Sign the CLA</button>
         </form>
       </div>
 

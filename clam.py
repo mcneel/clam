@@ -10,7 +10,7 @@
 
 __version__ = '0.1-dev'
 
-from flask import Flask, flash, redirect, render_template, request, url_for, make_response
+from flask import Flask, flash, make_response, redirect, render_template, request, session, url_for
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import Markup
 import json
@@ -168,7 +168,7 @@ def github():
 from wtforms import Form, StringField, TextAreaField, BooleanField, validators
 
 class RegistrationForm(Form):
-    username = StringField('Username', [validators.Length(min=4, max=25)])
+    username = None
     full_name = StringField('Full Name', [validators.Length(min=4, max=25)])
     email = StringField('Email Address', [validators.Length(min=6, max=35), validators.Email()])
     address = TextAreaField('Address')
@@ -210,7 +210,7 @@ def sign():
     form = RegistrationForm(request.form)
     if request.method == 'POST' and form.validate():
         sign = Signatory(
-            username = form.username.data,
+            username = session['username'],
             full_name = form.full_name.data,
             email = form.email.data,
             address = form.address.data.replace('\r', ''), # defaults to crlf?!
@@ -224,15 +224,57 @@ def sign():
         # GET /repos/:owner/:repo/pulls?state=open
         # GET /repos/:owner/:repo/pulls/:number/commits
         # TODO: redirect to thank you page, then origin url (i.e. pull request)
+        # clear session
+        session.clear()
         return redirect(url_for('signatories'))
     cla = get_cla_and_version()
+
+    # authenticated?
+    if 'access_token' in session:
+        # get username from github api
+        url = 'https://api.github.com/user?access_token={}'
+        r = requests.get(url.format(session['access_token']))
+        try:
+            login = r.json()['login']
+
+        except AttributeError:
+            app.logger.debug('error getting username from github, whoops')
+        session['username'] = login
+        form.username = login
+
     return render_template('register.html', form=form, cla=cla)
+
+@app.route('/auth')
+def auth():
+    if 'code' in request.args:
+        url = 'https://github.com/login/oauth/access_token'
+        payload = {
+            'client_id': environ.get('CLAM_GITHUB_CLIENT_ID'),
+            'client_secret': environ.get('CLAM_GITHUB_CLIENT_SECRET'),
+            'code': request.args['code']
+        }
+        app.logger.debug(payload)
+        headers = {'Accept': 'application/json'}
+        r = requests.post(url, params=payload, headers=headers)
+        answer = r.json()
+        app.logger.debug(answer)
+        # get access_token from params
+        # store username in session
+        if 'access_token' in answer:
+            session['access_token'] = r.json()['access_token']
+        else:
+            app.logger.error('github didn\'t return an access token, oh dear')
+        return redirect(url_for('sign') + '#sign')
+    url = 'https://github.com/login/oauth/authorize?client_id={}&scope=(no scope)'
+    url = url.format(environ.get('CLAM_GITHUB_CLIENT_ID'))
+    return redirect(url)
 
 @app.route('/', methods=['GET'])
 def signatories():
     data = [s.to_json() for s in Signatory.query.all()]
     r = make_response(json.dumps(data, indent=2, sort_keys=True))
     r.mimetype = 'application/json'
+    session.clear()
     return r
 
 if __name__ == '__main__':
