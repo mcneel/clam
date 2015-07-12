@@ -1,23 +1,71 @@
+# clam
+
+Yet another Contributor License Agreement Manager with webhooks and whatnot.
+
+Designed to be dead-simple&trade;, Clam helps you manage a single CLA for your GitHub organisation. Watch out though,
+
+The aim is to make it easy...
+
+- (a) for maintainers to merge compliant contributions
+- (b) for contributors to ensure they're compliant
+
+Using webhooks Clam checks the contributors of a pull request against its signatory database and sets the status of the branch `HEAD` commit accordingly. GitHub lovingly renders this useful information for you right there in the pull request.
+
+![](docs/green_light.png)
+
+Remember this tool only provides guidance. Clam will not fix your bugs for you. Neither will it do the washing up.
+
+A couple of exemptions apply, neither of which will trigger a failure:
+
+1. Anyone with who [publicises their membership of the organisation][org_api]
+2. Any collaborators with push access to the repository
+
+Both of these groups are considered to be inside the circle of trust.
+
+
+## Heroku
+
+Clam was designed to be run on Heroku.
+
 ```
 $ git clone https://github.com/mcneel/clam.git
 $ cd clam
-```
-
-Running locally
-```
-foreman run python clam.py
-```
-
-Heroku...
-```
-$ heroku create clam-example-57
+$ heroku create clam-example-57 # clam-example-57 is just an example!
 $ heroku addons:create heroku-postgresql
 $ heroku config:set CLAM_GITHUB_ORG=mcneel
-$ heroku config:set CLAM_BASEURL=https://mcneel-cla.herokuapp.com
 $ heroku config:set CLAM_GITHUB_TOKEN=your_github_access_token_with_repo_scope
+$ heroku config:set CLAM_GITHUB_CLIENT_ID=your_application_client_id
+$ heroku config:set CLAM_GITHUB_CLIENT_SECRET=your_application_client_secret
+$ git push heroku master
+$ heroku run python
+>>> from clam import db
+>>> db.create_all()
+Use exit() or Ctrl-D (i.e. EOF) to exit
 ```
 
-Webhook: `https://mcneel-cla.herokuapp.com/_github`
+Now simply add a webhook to your favorite repository.
+
 ```
-curl -d @pull.json -H "Content-Type: application/json" -X POST localhost:5000/_github
+https://clam-example-57.herokuapp.com/_github
 ```
+
+
+## Local
+
+For local testing I use [Foreman].
+
+```
+$ git clone https://github.com/mcneel/clam.git
+$ cd clam
+$ foreman run python clam.py
+```
+
+Don't forget to add the required environment variables (see [Heroku](#heroku)) to `.env`.
+
+Tips for spoofing a pull request with curl...
+```
+curl -d @test/pull.json -H "Content-Type: application/json" -X POST localhost:5000/_github
+```
+
+[org_api]: https://developer.github.com/v3/orgs/#list-user-organizations
+[Foreman]: https://github.com/ddollar/foreman
