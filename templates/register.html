@@ -29,7 +29,7 @@
 
       <h2 id="auth">2. Authenticate</h2>
       <div class="row marketing">
-        <a class="btn btn-primary btn-block {% if form.username %}disabled{% endif %}" href="/auth" role="button">Authenticate with GitHub</a>
+        <a class="btn btn-primary btn-block {% if form.username %}disabled{% endif %}" href="/_auth" role="button">Authenticate with GitHub</a>
         <!-- TODO: logout -->
       </div>
 
@@ -38,7 +38,7 @@
       <h2 id="sign">3. Sign</h2>
       <div class="row marketing">
         {% from "_formhelpers.html" import render_field, render_checkbox_field %}
-        <form method=post action="/sign">
+        <form method=post action="{{ form.redirect }}">
           <div class="form-group">
             <label>Username</label>
             <input type="text" class="form-control" placeholder="{% if form.username %}{{ form.username }}{% else %}Please authenticate with GitHub{% endif %}" readonly>

@@ -175,6 +175,7 @@ class RegistrationForm(Form):
     telephone = StringField('Phone Number')
     cla_version = StringField('CLA Version')
     accept = BooleanField('I accept', [validators.Required()])
+    redirect = None
 
 def get_cla_and_version():
     # TODO: search for 'CLA.*'
@@ -202,7 +203,7 @@ def get_cla_and_version():
 
     return {'text': text, 'sha': sha, 'link': link}
 
-@app.route('/sign', methods=['POST', 'PUT', 'GET'])
+@app.route('/', methods=['POST', 'GET'])
 def sign():
     # TODO: authenticate user with github oauth (no scope)
     # .form-control-static
@@ -227,7 +228,9 @@ def sign():
         # clear session
         session.clear()
         return redirect(url_for('signatories'))
+
     cla = get_cla_and_version()
+    form.redirect = url_for('sign') + '#sign'
 
     # authenticated?
     if 'access_token' in session:
@@ -244,7 +247,7 @@ def sign():
 
     return render_template('register.html', form=form, cla=cla)
 
-@app.route('/auth')
+@app.route('/_auth')
 def auth():
     if 'code' in request.args:
         url = 'https://github.com/login/oauth/access_token'
@@ -269,7 +272,7 @@ def auth():
     url = url.format(environ.get('CLAM_GITHUB_CLIENT_ID'))
     return redirect(url)
 
-@app.route('/', methods=['GET'])
+@app.route('/download', methods=['GET'])
 def signatories():
     data = [s.to_json() for s in Signatory.query.all()]
     r = make_response(json.dumps(data, indent=2, sort_keys=True))
