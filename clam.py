@@ -210,6 +210,9 @@ def sign():
     # TODO: add error at top if form didn't validate
     form = RegistrationForm(request.form)
     if request.method == 'POST' and form.validate():
+        # check for existance of signatory (belt and braces)
+        if Signatory.query.filter_by(username=session['username']).first():
+            return '', 409
         sign = Signatory(
             username = session['username'],
             full_name = form.full_name.data,
