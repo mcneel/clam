@@ -256,11 +256,11 @@ def auth():
             'client_secret': environ.get('CLAM_GITHUB_CLIENT_SECRET'),
             'code': request.args['code']
         }
-        app.logger.debug(payload)
+        #app.logger.debug(payload)
         headers = {'Accept': 'application/json'}
         r = requests.post(url, params=payload, headers=headers)
         answer = r.json()
-        app.logger.debug(answer)
+        #app.logger.debug(answer)
         # get access_token from params
         # store username in session
         if 'access_token' in answer:
