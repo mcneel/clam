@@ -230,7 +230,7 @@ def sign():
         # TODO: redirect to thank you page, then origin url (i.e. pull request)
         # clear session
         session.clear()
-        return redirect(url_for('signatories'))
+        return redirect(url_for('sign'))
 
     cla = get_cla_and_version()
     form.redirect = url_for('sign') + '#sign'
