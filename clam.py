@@ -65,7 +65,7 @@ def set_commit_status(repo, sha, status):
     target_url = ''
     if status:
         description = 'All contributors have signed the CLA!'
-        target_url = url_for('hello')
+        target_url = url_for('sign', _external=True)
     else:
         description = 'Not all contributors have signed the CLA'
         target_url = url_for('sign', _external=True)
@@ -201,7 +201,7 @@ def get_cla_and_version():
     # link to history
     link = 'https://github.com/{}/commits/master/{}'.format(repo, path)
 
-    return {'text': text, 'sha': sha, 'link': link}
+    return {'text': text, 'sha': sha, 'link': link, 'is_signed': False}
 
 @app.route('/', methods=['POST', 'GET'])
 def sign():
@@ -239,9 +239,11 @@ def sign():
         r = requests.get(url.format(session['access_token']))
         try:
             login = r.json()['login']
-
         except AttributeError:
             app.logger.debug('error getting username from github, whoops')
+        # check login against db
+        if Signatory.query.filter_by(username=login).first():
+            cla['is_signed'] = True
         session['username'] = login
         form.username = login
 

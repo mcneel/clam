@@ -51,7 +51,11 @@
           {{ render_field(form.telephone) }}
           {{ render_checkbox_field(form.accept) }}
           <input type="hidden" name="cla_version" value="{{ cla.sha }}">
+          {% if cla.is_signed %}
+          <a class="btn btn-success btn-block disabled" href="#" role="button">Looks like you've already signed the CLA!</a>
+          {% else %}
           <button type=submit class="btn btn-primary btn-block" {% if not form.username %}disabled="disabled"{% endif %}>Sign the CLA</button>
+          {% endif %}
         </form>
       </div>
 
