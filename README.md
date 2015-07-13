@@ -67,12 +67,17 @@ For local testing I use [Foreman].
 ```
 $ git clone https://github.com/mcneel/clam.git
 $ cd clam
+$ virtualenv venv
+$ . venv/bin/activate
+$ pip install -r requirements.txt
 $ foreman run python clam.py
 ```
 
 Don't forget to add the required environment variables (see [Heroku](#heroku)) to `.env`.
 
-Tips for spoofing a pull request with curl...
+Running `python clam.py` in this way creates a local sqlite database for testing.
+
+Tips for spoofing a pull request with curl (for my own notes, really)...
 ```
 curl -d @test/pull.json -H "Content-Type: application/json" -X POST localhost:5000/_github
 ```
