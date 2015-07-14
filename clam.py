@@ -45,11 +45,19 @@ class Signatory(db.Model):
             'telephone': self.telephone
         }
 
+# store client credentials to authenticate otherwise unauthenticated requests
+# to github api
+# TODO: check that these exist
+client_auth = {
+    'client_id': environ.get('CLAM_GITHUB_CLIENT_ID'),
+    'client_secret': environ.get('CLAM_GITHUB_CLIENT_SECRET')
+}
+
 def get_pull_request_authors(repo, pr):
     """Gets a list of committers for a given pull request"""
     app.logger.debug('getting committers for {} #{}'.format(repo, pr))
     url = 'https://api.github.com/repos/{}/pulls/{}/commits'
-    r = requests.get(url.format(repo, pr))
+    r = requests.get(url.format(repo, pr), params=client_auth)
     committers = [c['committer']['login'] for c in r.json()]
     # reduce committers to unique set
     committers = list(set(committers))
@@ -184,7 +192,7 @@ def get_cla_and_version():
 
     # content
     url = 'https://api.github.com/repos/{}/contents/'.format(repo)
-    r = requests.get(url)
+    r = requests.get(url, params=client_auth)
     content = None
     for f in r.json():
         name = f['name'].split('.')
@@ -194,7 +202,7 @@ def get_cla_and_version():
             # get contents (use github to render html = genius!)
             url = 'https://api.github.com/repos/{}/contents/{}'.format(repo, path)
             media={'Accept':'application/vnd.github.VERSION.html'}
-            r = requests.get(url, headers=media)
+            r = requests.get(url, headers=media, params=client_auth)
             content = Markup(r.text)
             break
     if not content:
@@ -202,7 +210,7 @@ def get_cla_and_version():
 
     # sha
     url = 'https://api.github.com/repos/{}/commits?path={}'.format(repo, path)
-    r = requests.get(url)
+    r = requests.get(url, params=client_auth)
     sha = r.json()[0]['sha']
 
     # link to history
