@@ -14,6 +14,7 @@ from flask import Flask, flash, make_response, redirect, render_template, reques
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import Markup
 import json
+import markdown
 from os import environ
 import requests
 
@@ -21,8 +22,6 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DATABASE_URL', 'sqlite:///db.sqlite')
 app.config['DEBUG'] = environ.get('DEBUG', False)
 app.config['SECRET_KEY'] = 'I can see a dark green jeep from my window radish barracuda'
-
-app.jinja_env.globals['include_raw'] = lambda filename : Markup(app.jinja_loader.get_source(app.jinja_env, filename)[0])
 
 db = SQLAlchemy(app)
 
@@ -178,20 +177,28 @@ class RegistrationForm(Form):
     redirect = None
 
 def get_cla_and_version():
-    # TODO: search for 'CLA.*'
-    # render html if possible
-    # http://flask.pocoo.org/snippets/19/
     path = 'CLA'
 
     # TODO: set repo in env var
     repo = 'mcneel/clam'
 
-    # text
-    #with open(path, 'r') as f:
-    #    text = f.read()
-    url = 'https://raw.github.com/{}/master/{}'.format(repo, path)
+    # content
+    url = 'https://api.github.com/repos/{}/contents/'.format(repo)
     r = requests.get(url)
-    text = r.text
+    content = None
+    for f in r.json():
+        name = f['name'].split('.')
+        if name[0].upper() == path:
+            path = '.'.join(name)
+            app.logger.debug("found file: " + path)
+            # get contents (use github to render html = genius!)
+            url = 'https://api.github.com/repos/{}/contents/{}'.format(repo, path)
+            media={'Accept':'application/vnd.github.VERSION.html'}
+            r = requests.get(url, headers=media)
+            content = Markup(r.text)
+            break
+    if not content:
+        app.logger.error('couldn\'t find CLA in repository, did you forget to commit it?')
 
     # sha
     url = 'https://api.github.com/repos/{}/commits?path={}'.format(repo, path)
@@ -201,7 +208,7 @@ def get_cla_and_version():
     # link to history
     link = 'https://github.com/{}/commits/master/{}'.format(repo, path)
 
-    return {'text': text, 'sha': sha, 'link': link, 'is_signed': False}
+    return {'content': content, 'sha': sha, 'link': link, 'is_signed': False}
 
 @app.route('/', methods=['POST', 'GET'])
 def sign():

@@ -18,13 +18,8 @@
       <div class="row marketing">
         <h2 id="read">1. Read</h2>
         <strong>Version:</strong> <a href="{{ cla.link }}"><code>{{ cla.sha|truncate(7, True, '') }}</code></a>
-        <br>
-
-      <pre>
-        <code>
-{{ cla.text }}
-        </code>
-      </pre>
+        <br><br>
+        {{ cla.content }}
       </div>
 
       <hr>

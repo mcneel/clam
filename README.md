@@ -32,6 +32,8 @@ To authenticate signatories you'll need to register for a new [developer applica
 https://clam-example-57.herokuapp.com/_auth
 ```
 
+Last, but by no means least, make sure you've got your CLA checked into the root of the repository as `CLA.<extension>`. I've enlisted the help of [GitHub Markup] to render HTML so the CLA can have any extension listed there including none at all (e.g. `CLA.md`).
+
 
 ## Usage
 
@@ -86,3 +88,4 @@ curl -d @test/pull.json -H "Content-Type: application/json" -X POST localhost:50
 [Foreman]: https://github.com/ddollar/foreman
 [personal access token]: https://help.github.com/articles/creating-an-access-token-for-command-line-use/
 [developer application]: https://github.com/settings/applications/new
+[GitHub Markup]: https://github.com/github/markup#markups
