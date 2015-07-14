@@ -14,7 +14,6 @@ from flask import Flask, flash, make_response, redirect, render_template, reques
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import Markup
 import json
-import markdown
 from os import environ
 import requests
 
