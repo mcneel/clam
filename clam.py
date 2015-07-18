@@ -10,7 +10,7 @@
 
 __version__ = '0.1-dev'
 
-from flask import Flask, flash, make_response, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, make_response, redirect, render_template, request, session, url_for
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import Markup
 import json
@@ -130,6 +130,38 @@ def user_is_collaborator(user, repo):
     else:
         return False
 
+def check_and_set(repo, number, sha=None):
+    if not sha:
+        url = 'https://api.github.com/repos/{}/pulls/{}'.format(repo, pr)
+        r = requests.get(url, params=client_auth)
+        if r.status_code == requests.codes.ok:
+            sha = r.json()['head']['sha']
+        else:
+            raise Exception(url, r.status_code)
+
+    # get authors
+    authors = get_pull_request_authors(repo, number)
+
+    for author in authors:
+        # check org + collaborators
+        if user_in_org(author):
+            set_commit_status(repo, sha, True)
+            return True
+            #pass
+        if user_is_collaborator(author, repo):
+            set_commit_status(repo, sha, True)
+            return True
+            #pass
+        # check signatories
+        if not Signatory.query.filter_by(username=author).first():
+            app.logger.debug('{} hasn\'t signed yet'.format(author))
+            set_commit_status(repo, sha, False)
+            return False
+        app.logger.debug('{} has already signed'.format(author))
+    set_commit_status(repo, sha, True)
+    return True
+
+
 @app.route('/_github', methods=['POST'])
 def github():
     """endpoint for handling pull_request webhook events"""
@@ -144,32 +176,51 @@ def github():
 
         # get heah sha - pull request uses this commit status
         head = pull['pull_request']['head']['sha']
-
-        # get authors
         repo = pull['repository']['full_name'] # owner/repo
         number = pull['number']
-        authors = get_pull_request_authors(repo, number)
 
-        for author in authors:
-            # check org + collaborators
-            if user_in_org(author):
-                set_commit_status(repo, head, True)
-                return '', 200
-                #pass
-            if user_is_collaborator(author, repo):
-                set_commit_status(repo, head, True)
-                return '', 200
-                #pass
-            # check signatories
-            if not Signatory.query.filter_by(username=author).first():
-                app.logger.debug('{} hasn\'t signed yet'.format(author))
-                set_commit_status(repo, head, False)
-                return 'commit status set\n', 200
-            app.logger.debug('{} has already signed'.format(author))
-        set_commit_status(repo, head, True)
+        check_and_set(repo, number, sha=head)
         return 'commit status set\n', 200
     else:
         return 'nothing to do\n', 200
+
+@app.route('/_hubot/check/<path:repo>')
+def check(repo):
+    # GET /repos/:owner/:repo/pulls?state=open
+    url = 'https://api.github.com/repos/{}/pulls?state=open'.format(repo)
+    r = requests.get(url, params=client_auth)
+    pulls = []
+    if r.status_code == requests.codes.ok:
+        pulls = [{'number':pr['number'],'head':pr['head']['sha']} for pr in r.json()]
+    else:
+        raise Exception(url, r.status_code)
+    for i in range(len(pulls)):
+        pull = pulls[i]
+        pull['signed'] = check_and_set(repo, pull['number'], sha=pull['head'])
+        pulls[i] = pull
+    r = make_response(json.dumps(pulls, indent=2, sort_keys=True))
+    r.mimetype = 'application/json'
+    return r
+
+@app.route('/_hubot/setup/<path:repo>')
+def setup(repo):
+    payload = {
+        'name': 'web',
+        'config': {
+            'url': url_for('github', _external=True),
+            'content_type': 'json'
+        },
+        'events': ['pull_request'],
+        'active': True
+    }
+    url = 'https://api.github.com/repos/{}/hooks'.format(repo)
+    auth = {'access_token': environ.get('CLAM_GITHUB_TOKEN')}
+    r = requests.post(url, data=json.dumps(payload), params=auth)
+    if not r.status_code == 201:
+        app.logger.debug(json.dumps(r.json(), indent=2))
+        raise Exception(url, r.status_code, 'if 404 check your auth scopes for repo_hook')
+    return jsonify(r.json())
+    #return url_for('github', _external=True)
 
 from wtforms import Form, StringField, TextAreaField, BooleanField, validators
 
