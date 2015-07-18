@@ -33,6 +33,8 @@ class Signatory(db.Model):
     email = db.Column(db.String())
     address = db.Column(db.String())
     telephone = db.Column(db.String())
+    # created_at
+    # updated_at
 
     def to_json(self):
         return {
@@ -97,7 +99,7 @@ def set_commit_status(repo, sha, status):
     if r.status_code != requests.codes.ok:
         app.logger.debug((r.status_code, r.json()))
 
-def get_commit_status(repo, sha, status):
+def get_commit_status(repo, sha):
     """Returns True if commit status is already 'success', otherwise False"""
     url = 'https://api.github.com/repos/{}/commits/{}/statuses'
     r = requests.get(url.format(repo, sha))
@@ -141,26 +143,24 @@ def check_and_set(repo, number, sha=None):
 
     # get authors
     authors = get_pull_request_authors(repo, number)
+    waiting = []
 
     for author in authors:
         # check org + collaborators
         if user_in_org(author):
-            set_commit_status(repo, sha, True)
-            return True
-            #pass
+            continue
         if user_is_collaborator(author, repo):
-            set_commit_status(repo, sha, True)
-            return True
-            #pass
+            continue
         # check signatories
         if not Signatory.query.filter_by(username=author).first():
             app.logger.debug('{} hasn\'t signed yet'.format(author))
-            set_commit_status(repo, sha, False)
-            return False
+            waiting.append(author)
+            continue
         app.logger.debug('{} has already signed'.format(author))
-    set_commit_status(repo, sha, True)
-    return True
-
+    app.logger.debug(waiting)
+    status = len(waiting) == 0
+    set_commit_status(repo, sha, status)
+    return status, waiting
 
 @app.route('/_github', methods=['POST'])
 def github():
@@ -196,7 +196,7 @@ def check(repo):
         raise Exception(url, r.status_code)
     for i in range(len(pulls)):
         pull = pulls[i]
-        pull['signed'] = check_and_set(repo, pull['number'], sha=pull['head'])
+        pull['signed'], pull['waiting_for'] = check_and_set(repo, pull['number'], sha=pull['head'])
         pulls[i] = pull
     r = make_response(json.dumps(pulls, indent=2, sort_keys=True))
     r.mimetype = 'application/json'
