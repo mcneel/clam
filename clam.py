@@ -67,7 +67,7 @@ def get_pull_request_authors(repo, pr):
 
 status_context = 'ci/clam'
 
-def set_commit_status(repo, sha, status):
+def set_commit_status(repo, sha, status, waiting=None):
     state = 'success' if status else 'failure'
     desciption = ''
     target_url = ''
@@ -75,7 +75,14 @@ def set_commit_status(repo, sha, status):
         description = 'All contributors have signed the CLA!'
         target_url = url_for('sign', _external=True)
     else:
-        description = 'Not all contributors have signed the CLA'
+        if waiting and len(waiting) > 0:
+            if len(waiting) > 1:
+                pretty = ', '.join(waiting[:-1]) + ' and ' + waiting[-1]
+            else:
+                pretty = waiting[0]
+            description = 'Waiting for {} to sign the CLA'.format(pretty)
+        else:
+            description = 'Not all contributors have signed the CLA'
         target_url = url_for('sign', _external=True)
 
     payload = {
@@ -159,7 +166,7 @@ def check_and_set(repo, number, sha=None):
         app.logger.debug('{} has already signed'.format(author))
     app.logger.debug(waiting)
     status = len(waiting) == 0
-    set_commit_status(repo, sha, status)
+    set_commit_status(repo, sha, status, waiting=waiting)
     return status, waiting
 
 @app.route('/_github', methods=['POST'])
