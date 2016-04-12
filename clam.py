@@ -120,6 +120,7 @@ def user_in_org(user):
     url = 'https://api.github.com/users/{}/orgs'.format(user)
     r = requests.get(url)
     for org in r.json():
+        print org
         if org['login'] == environ.get('CLAM_GITHUB_ORG'):
             app.logger.debug('{} in {}; CLA not required'.format(user, org['login']))
             return True
