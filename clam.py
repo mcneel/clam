@@ -76,6 +76,7 @@ def set_commit_status(repo, sha, status, waiting=None):
         target_url = url_for('sign', _external=True)
     else:
         if waiting and len(waiting) > 0:
+            waiting = ['@' + login for login in waiting]
             if len(waiting) > 1:
                 pretty = ', '.join(waiting[:-1]) + ' and ' + waiting[-1]
             else:
