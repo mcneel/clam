@@ -116,16 +116,17 @@ def get_commit_status(repo, sha):
     return False
 
 def user_in_org(user):
-    # https://developer.github.com/v3/orgs/#list-user-organizations
-    url = 'https://api.github.com/users/{}/orgs'.format(user)
-    r = requests.get(url)
-    for org in r.json():
-        print org
-        if org['login'] == environ.get('CLAM_GITHUB_ORG'):
-            app.logger.debug('{} in {}; CLA not required'.format(user, org['login']))
-            return True
-    app.logger.debug('{} not in {}'.format(user, environ.get('CLAM_GITHUB_ORG')))
-    return False
+    # https://developer.github.com/v3/orgs/members/#check-membership
+    org = environ.get('CLAM_GITHUB_ORG')
+    url = 'https://api.github.com/orgs/{}/members/{}'.format(org, user)
+    auth = {'Authorization': 'token ' + environ.get('CLAM_GITHUB_TOKEN')}
+    r = requests.get(url, headers=auth)
+    if r.status_code == 204:
+        app.logger.info('{} is in {}; CLA not required'.format(user, org))
+        return True
+    else:
+        app.logger.debug('{} is not in {}'.format(user, org))
+        return False
 
 def user_is_collaborator(user, repo):
     # https://developer.github.com/v3/repos/collaborators/
