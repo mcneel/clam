@@ -2,7 +2,7 @@
 
 Yet another Contributor License Agreement Manager with webhooks and whatnot.
 
-Designed to be dead-simple&trade;, Clam helps you manage a single CLA for your GitHub organisation. Watch out though,
+Designed to be dead-simple&trade;, Clam helps you manage a single CLA for your GitHub organisation.
 
 The aim is to make it easy...
 
@@ -17,7 +17,7 @@ Remember this tool only provides guidance. Clam will not fix your bugs for you. 
 
 A couple of exemptions apply, neither of which will trigger a failure:
 
-1. Anyone with who [publicises their membership of the organisation][org_api]
+1. Anyone with who is a member of your GitHub organisation (public or private)
 2. Any collaborators with push access to the repository
 
 Both of these groups are considered to be inside the circle of trust.
@@ -25,9 +25,9 @@ Both of these groups are considered to be inside the circle of trust.
 
 ## Configuration
 
-To keep things simple, I've hardcoded the organisation name and opted to use a [personal access token] to authorise calls to the GitHub API where necessary. Set `CLAM_GITHUB_ORG` and `CLAM_GITHUB_TOKEN` accordingly. The personal access token requires the `repo` scope to set commit statuses and query repo collaborators.
+To keep things simple, I've hardcoded the organisation name and opted to use a [personal access token] to authorise calls to the GitHub API where necessary. Set `CLAM_GITHUB_ORG` and `CLAM_GITHUB_TOKEN` accordingly. The personal access token requires the `repo` scope to set commit statuses and query repo collaborators. The user to which the personal access token belongs should also be a member of `CLAM_GITHUB_ORG`.
 
-To authenticate signatories you'll need to register for a new [developer application] and set the values of `CLAM_GITHUB_CLIENT_ID` and `CLAM_GITHUB_CLIENT_SECRET` accordingly. Access to private information is not required; This process is in place simply to ensure that signatories can only sign for GitHub accounts that they have access to, therefore only the username is stored after authentication. For the callback url use "hostname/_auth", for example
+To authenticate signatories you'll need to register for a new [developer application] and set the values of `CLAM_GITHUB_CLIENT_ID` and `CLAM_GITHUB_CLIENT_SECRET` accordingly. Access to private information is not required; This process is in place simply to ensure that signatories can only sign for GitHub accounts that they have access to, therefore only the username is stored after authentication. For the callback url use the `/_auth` endpoint, for example
 ```
 https://clam-example-57.herokuapp.com/_auth
 ```
@@ -55,7 +55,7 @@ $ heroku run python
 Use exit() or Ctrl-D (i.e. EOF) to exit
 ```
 
-Now simply add a webhook to your favorite repository.
+Now add a webhook to your favorite repository and tell it to send "pull request" events.
 
 ```
 https://clam-example-57.herokuapp.com/_github
