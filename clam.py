@@ -317,8 +317,10 @@ def sign():
         r = requests.get(url.format(session['access_token']))
         try:
             login = r.json()['login']
-        except AttributeError:
+        except KeyError:
+            # treat as not authenticated
             app.logger.debug('error getting username from github, whoops')
+            return render_template('register.html', form=form, cla=cla)
         # check login against db
         if Signatory.query.filter_by(username=login).first():
             cla['is_signed'] = True
